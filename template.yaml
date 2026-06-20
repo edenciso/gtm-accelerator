@@ -1,0 +1,472 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ValueOS AI GTM Accelerator Value Assessment
+  Multi-agent workflow for GTM audit, gap analysis, and report generation
+  using AWS Bedrock + Claude Sonnet 4.5 orchestration
+
+Globals:
+  Function:
+    Timeout: 900
+    MemorySize: 1024
+    Runtime: python3.12
+    Environment:
+      Variables:
+        POWERTOOLS_SERVICE_NAME: gtm-accelerator
+        POWERTOOLS_LOG_LEVEL: INFO
+        DATA_TABLE: !Ref DataTable
+        REPORTS_TABLE: !Ref ReportsTable
+        ENGAGEMENTS_TABLE: !Ref EngagementsTable
+        REPORT_BUCKET: !Ref ReportBucket
+        BEDROCK_MODEL_ID: us.anthropic.claude-sonnet-4-5-20250929-v1:0
+        BEDROCK_REGION: !Ref AWS::Region
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+  CognitoDomain:
+    Type: String
+    Default: gtm-accelerator-sprint
+
+Resources:
+  # ============================================================
+  # COGNITO - Authentication
+  # ============================================================
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub gtm-accelerator-${Stage}
+      AutoVerifiedAttributes: [email]
+      UsernameAttributes: [email]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      Schema:
+        - Name: company_name
+          AttributeDataType: String
+          Mutable: true
+        - Name: role
+          AttributeDataType: String
+          Mutable: true
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: gtm-accelerator-client
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+
+  # ============================================================
+  # API GATEWAY
+  # ============================================================
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub gtm-accelerator-api-${Stage}
+      StageName: !Ref Stage
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        AddDefaultAuthorizerToCorsPreflight: false
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt UserPool.Arn
+            Identity:
+              Header: Authorization
+              ReauthorizeEvery: 300
+      Cors:
+        AllowMethods: "'GET,POST,PUT,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+      Models:
+        EngagementInput:
+          type: object
+          required: [company_name, contact_email]
+          properties:
+            company_name:
+              type: string
+            contact_email:
+              type: string
+
+  # ============================================================
+  # DYNAMODB TABLES
+  # ============================================================
+  DataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub gtm-accelerator-data-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  ReportsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub gtm-accelerator-reports-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  EngagementsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub gtm-accelerator-engagements-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # ============================================================
+  # S3 - Report Storage
+  # ============================================================
+  ReportBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub gtm-accelerator-reports-${AWS::AccountId}-${Stage}
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldReports
+            Status: Enabled
+            ExpirationInDays: 365
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # ============================================================
+  # LAMBDA FUNCTIONS
+  # ============================================================
+
+  # --- Engagement Management ---
+  CreateEngagementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/engagement.create_handler
+      CodeUri: .
+      Description: Create new client engagement / sprint
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EngagementsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /engagements
+            Method: POST
+
+  GetEngagementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/engagement.get_handler
+      CodeUri: .
+      Description: Get engagement details and status
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref EngagementsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ReportsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /engagements/{engagement_id}
+            Method: GET
+
+  # --- Data Ingestion ---
+  IngestGTMDataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/ingest.gtm_data_handler
+      CodeUri: .
+      Description: Ingest client GTM operating model data (JSON)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EngagementsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /engagements/{engagement_id}/data/gtm
+            Method: POST
+
+  IngestSalesDataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/ingest.sales_data_handler
+      CodeUri: .
+      Description: Ingest client sales telemetry data (JSON)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EngagementsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /engagements/{engagement_id}/data/sales
+            Method: POST
+
+  IngestFinancialsDataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/ingest.financials_data_handler
+      CodeUri: .
+      Description: Ingest client unit economics / financial data (JSON)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EngagementsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /engagements/{engagement_id}/data/financials
+            Method: POST
+
+  IngestToolStackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/ingest.tool_stack_handler
+      CodeUri: .
+      Description: Ingest client current tool stack inventory (JSON)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EngagementsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /engagements/{engagement_id}/data/tools
+            Method: POST
+
+  # --- Report Generation (Async Agentic Orchestration) ---
+  GenerateReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/report_orchestrator.generate_handler
+      CodeUri: .
+      Timeout: 30
+      MemorySize: 256
+      Description: >
+        Async trigger — validates data, creates report record,
+        invokes worker Lambda asynchronously, returns immediately
+      Environment:
+        Variables:
+          WORKER_FUNCTION_NAME: !Ref ReportWorkerFunction
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ReportsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EngagementsTable
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReportWorkerFunction
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /engagements/{engagement_id}/report/generate
+            Method: POST
+
+  ReportWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/report_worker.worker_handler
+      CodeUri: .
+      Timeout: 900
+      MemorySize: 2048
+      Description: >
+        Background worker — runs the full 5-agent orchestration pipeline
+        via Bedrock Claude Sonnet 4.5. Invoked async by trigger Lambda.
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ReportsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EngagementsTable
+        - S3CrudPolicy:
+            BucketName: !Ref ReportBucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: "*"
+
+  GetReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/report_orchestrator.get_report_handler
+      CodeUri: .
+      Description: Retrieve generated report and download URL
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ReportsTable
+        - S3ReadPolicy:
+            BucketName: !Ref ReportBucket
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /engagements/{engagement_id}/report
+            Method: GET
+
+  GetReportStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/report_orchestrator.status_handler
+      CodeUri: .
+      Description: Check report generation progress
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ReportsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /engagements/{engagement_id}/report/status
+            Method: GET
+
+  # --- Demo / Quick Start ---
+  RunDemoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/demo.run_demo_handler
+      CodeUri: .
+      Timeout: 30
+      MemorySize: 256
+      Description: >
+        One-click demo: loads sample data, triggers async report generation
+      Environment:
+        Variables:
+          WORKER_FUNCTION_NAME: !Ref ReportWorkerFunction
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ReportsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EngagementsTable
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReportWorkerFunction
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /demo/run
+            Method: POST
+            Auth:
+              Authorizer: NONE
+
+# ============================================================
+# OUTPUTS
+# ============================================================
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Stage}
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+
+  ReportBucketName:
+    Description: S3 bucket for generated reports
+    Value: !Ref ReportBucket
+
+  DataTableName:
+    Description: DynamoDB table for ingested data
+    Value: !Ref DataTable
+
+  ReportsTableName:
+    Description: DynamoDB table for report metadata
+    Value: !Ref ReportsTable

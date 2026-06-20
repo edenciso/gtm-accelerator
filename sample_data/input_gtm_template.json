@@ -1,0 +1,95 @@
+{
+  "company_profile": {
+    "name": "YOUR_COMPANY_NAME",
+    "industry": "Enterprise SaaS / AI Platform",
+    "sub_vertical": "",
+    "stage": "series_b",
+    "arr": 0,
+    "mrr": 0,
+    "headcount": 0,
+    "gtm_headcount": 0,
+    "founding_year": 2022,
+    "hq_location": "",
+    "target_markets": []
+  },
+  "gtm_model": {
+    "motion_type": "hybrid",
+    "primary_channel": "outbound_sales",
+    "secondary_channels": [],
+    "icp_definition": {
+      "company_size": "",
+      "industries": [],
+      "titles": [],
+      "budget_range": "",
+      "pain_points": []
+    },
+    "personas": [
+      {
+        "title": "",
+        "role_in_buying": "decision_maker",
+        "key_concerns": []
+      }
+    ],
+    "pricing_model": "",
+    "avg_deal_size": 0,
+    "avg_sales_cycle_days": 0,
+    "win_rate": 0,
+    "expansion_rate": 0
+  },
+  "sales_process": {
+    "stages": [
+      {
+        "name": "Lead",
+        "conversion_rate": 0,
+        "avg_days_in_stage": 0,
+        "activities": []
+      },
+      {
+        "name": "Qualified",
+        "conversion_rate": 0,
+        "avg_days_in_stage": 0,
+        "activities": []
+      },
+      {
+        "name": "Demo/POC",
+        "conversion_rate": 0,
+        "avg_days_in_stage": 0,
+        "activities": []
+      },
+      {
+        "name": "Proposal",
+        "conversion_rate": 0,
+        "avg_days_in_stage": 0,
+        "activities": []
+      },
+      {
+        "name": "Closed Won",
+        "conversion_rate": 1.0,
+        "avg_days_in_stage": 0,
+        "activities": []
+      }
+    ],
+    "lead_sources": [
+      {
+        "source": "",
+        "volume_monthly": 0,
+        "conversion_rate": 0,
+        "cac": 0
+      }
+    ],
+    "bottlenecks": [],
+    "automation_level": "none"
+  },
+  "competitive_landscape": {
+    "direct_competitors": [
+      {
+        "name": "",
+        "positioning": "",
+        "strengths": [],
+        "weaknesses": []
+      }
+    ],
+    "differentiation": [],
+    "moat_assessment": ""
+  }
+}

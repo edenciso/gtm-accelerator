@@ -1,0 +1,26 @@
+{
+  "tools": [
+    {
+      "name": "Salesforce",
+      "category": "crm",
+      "vendor": "Salesforce",
+      "monthly_cost": 0,
+      "annual_cost": 0,
+      "users": 0,
+      "utilization_pct": 0,
+      "integrations": [],
+      "satisfaction_score": 5,
+      "contract_end_date": "",
+      "data_flows": [
+        {
+          "direction": "bidirectional",
+          "connected_tool": "",
+          "data_type": "",
+          "automation_level": "manual"
+        }
+      ]
+    }
+  ],
+  "gaps_identified": [],
+  "integration_quality": "basic"
+}

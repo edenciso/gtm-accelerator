@@ -1,0 +1,79 @@
+{
+  "info": {
+    "name": "GTM Accelerator Value Sprint API",
+    "description": "AI-native multi-agent GTM audit and report generation",
+    "version": "1.0.0"
+  },
+  "variables": {
+    "base_url": "https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/dev",
+    "token": "YOUR_COGNITO_JWT"
+  },
+  "requests": [
+    {
+      "name": "1. Create Engagement",
+      "method": "POST",
+      "url": "{{base_url}}/engagements",
+      "headers": {"Authorization": "Bearer {{token}}", "Content-Type": "application/json"},
+      "body": {
+        "company_name": "Acme AI",
+        "contact_email": "ceo@acme.ai",
+        "contact_name": "Jane Smith",
+        "stage": "series_b",
+        "arr_range": "$15M"
+      }
+    },
+    {
+      "name": "2. Ingest GTM Data",
+      "method": "POST",
+      "url": "{{base_url}}/engagements/{{engagement_id}}/data/gtm",
+      "headers": {"Authorization": "Bearer {{token}}", "Content-Type": "application/json"},
+      "body": "SEE sample_data/input_gtm_template.json"
+    },
+    {
+      "name": "3. Ingest Sales Data",
+      "method": "POST",
+      "url": "{{base_url}}/engagements/{{engagement_id}}/data/sales",
+      "headers": {"Authorization": "Bearer {{token}}", "Content-Type": "application/json"},
+      "body": "SEE sample_data/input_sales_template.json"
+    },
+    {
+      "name": "4. Ingest Financials",
+      "method": "POST",
+      "url": "{{base_url}}/engagements/{{engagement_id}}/data/financials",
+      "headers": {"Authorization": "Bearer {{token}}", "Content-Type": "application/json"},
+      "body": "SEE sample_data/input_financials_template.json"
+    },
+    {
+      "name": "5. Ingest Tool Stack",
+      "method": "POST",
+      "url": "{{base_url}}/engagements/{{engagement_id}}/data/tools",
+      "headers": {"Authorization": "Bearer {{token}}", "Content-Type": "application/json"},
+      "body": "SEE sample_data/input_tools_template.json"
+    },
+    {
+      "name": "6. Generate Report",
+      "method": "POST",
+      "url": "{{base_url}}/engagements/{{engagement_id}}/report/generate",
+      "headers": {"Authorization": "Bearer {{token}}"}
+    },
+    {
+      "name": "7. Check Report Status",
+      "method": "GET",
+      "url": "{{base_url}}/engagements/{{engagement_id}}/report/status",
+      "headers": {"Authorization": "Bearer {{token}}"}
+    },
+    {
+      "name": "8. Get Report",
+      "method": "GET",
+      "url": "{{base_url}}/engagements/{{engagement_id}}/report",
+      "headers": {"Authorization": "Bearer {{token}}"}
+    },
+    {
+      "name": "DEMO: One-Click Run",
+      "method": "POST",
+      "url": "{{base_url}}/demo/run",
+      "headers": {"Authorization": "Bearer {{token}}", "Content-Type": "application/json"},
+      "body": {}
+    }
+  ]
+}

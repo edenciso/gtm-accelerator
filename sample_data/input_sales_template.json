@@ -1,0 +1,70 @@
+{
+  "pipeline": {
+    "total_pipeline_value": 0,
+    "weighted_pipeline": 0,
+    "pipeline_coverage_ratio": 0,
+    "stages": [
+      {
+        "name": "Lead",
+        "deal_count": 0,
+        "total_value": 0,
+        "avg_age_days": 0,
+        "conversion_to_next": 0
+      },
+      {
+        "name": "Qualified",
+        "deal_count": 0,
+        "total_value": 0,
+        "avg_age_days": 0,
+        "conversion_to_next": 0
+      },
+      {
+        "name": "Demo/POC",
+        "deal_count": 0,
+        "total_value": 0,
+        "avg_age_days": 0,
+        "conversion_to_next": 0
+      },
+      {
+        "name": "Proposal",
+        "deal_count": 0,
+        "total_value": 0,
+        "avg_age_days": 0,
+        "conversion_to_next": 0
+      },
+      {
+        "name": "Negotiation",
+        "deal_count": 0,
+        "total_value": 0,
+        "avg_age_days": 0,
+        "conversion_to_next": 0
+      }
+    ]
+  },
+  "velocity_metrics": {
+    "avg_deal_velocity_days": 0,
+    "time_to_first_value_days": 0,
+    "monthly_meetings_booked": 0,
+    "meeting_to_opp_rate": 0,
+    "demo_to_close_rate": 0,
+    "response_time_hours": 0
+  },
+  "rep_performance": [
+    {
+      "rep_id": "AE-001",
+      "quota": 0,
+      "attainment_pct": 0,
+      "deals_closed": 0,
+      "avg_deal_size": 0,
+      "win_rate": 0,
+      "activities_per_day": 0
+    }
+  ],
+  "cohort_metrics": {
+    "nrr_pct": 0,
+    "gross_churn_pct": 0,
+    "expansion_revenue_pct": 0,
+    "logo_retention_pct": 0,
+    "avg_contract_length_months": 0
+  }
+}

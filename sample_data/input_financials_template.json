@@ -1,0 +1,38 @@
+{
+  "unit_economics": {
+    "cac": 0,
+    "cac_blended": 0,
+    "cac_sales_led": 0,
+    "cac_product_led": 0,
+    "ltv": 0,
+    "ltv_cac_ratio": 0,
+    "payback_months": 0,
+    "gross_margin_pct": 0,
+    "contribution_margin_pct": 0,
+    "magic_number": 0,
+    "burn_multiple": 0
+  },
+  "revenue_breakdown": {
+    "new_arr": 0,
+    "expansion_arr": 0,
+    "churned_arr": 0,
+    "net_new_arr": 0,
+    "services_revenue": 0
+  },
+  "cost_structure": {
+    "total_gtm_spend": 0,
+    "sales_comp": 0,
+    "marketing_spend": 0,
+    "tool_subscriptions": 0,
+    "hosting_ai_costs": 0,
+    "total_cogs": 0,
+    "gross_margin_dollars": 0
+  },
+  "ai_specific_costs": {
+    "llm_api_monthly": 0,
+    "ai_tool_subscriptions_monthly": 0,
+    "ai_headcount_costs_monthly": 0,
+    "total_ai_spend_monthly": 0,
+    "ai_spend_as_pct_revenue": 0
+  }
+}
